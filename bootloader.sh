@@ -1,0 +1,195 @@
+#!/data/data/com.termux/files/usr/bin/bash
+clear
+CONFIG_FILE="$HOME/.config/termux-bootloader/config.json"
+figlet_args="$(jq -r '.figlet_args' "$CONFIG_FILE")"
+figlet_text="$(jq -r '.figlet_text' "$CONFIG_FILE")"
+selected_theme="$(jq -r '.selected_theme' "$CONFIG_FILE")"
+unselected_theme="$(jq -r '.unselected_theme' "$CONFIG_FILE")"
+main_theme="$(jq -r '.main_theme' "$CONFIG_FILE")"
+users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+themefind() {
+    local color="$1"
+    color="$(echo "$color" | tr '[:upper:]' '[:lower:]')"
+    case "$color" in
+        black) echo -e "\033[30m" ;;
+        red) echo -e "\033[31m" ;;
+        green) echo -e "\033[32m" ;;
+        yellow) echo -e "\033[33m" ;;
+        blue) echo -e "\033[34m" ;;
+        magenta) echo -e "\033[35m" ;;
+        cyan) echo -e "\033[36m" ;;
+        white) echo -e "\033[37m" ;;
+        brightblack) echo -e "\033[90m" ;;
+        brightred) echo -e "\033[91m" ;;
+        brightgreen) echo -e "\033[92m" ;;
+        brightyellow) echo -e "\033[93m" ;;
+        brightblue) echo -e "\033[94m" ;;
+        brightmagenta) echo -e "\033[95m" ;;
+        brightcyan) echo -e "\033[96m" ;;
+        brightwhite) echo -e "\033[97m" ;;
+        *) echo -e "\033[0m" ;;
+    esac
+}
+
+selected_theme=$(themefind "$selected_theme")
+unselected_theme=$(themefind "$unselected_theme")
+main_theme=$(themefind "$main_theme")
+
+menu() {
+    local options=("$@")
+    local current=0 key
+    local last_lines=0
+
+    draw_menu() {
+	tput civis
+        tput cup 0 0
+        printf "${main_theme}"
+        figlet $figlet_args $figlet_text
+        local line_count=0
+        for i in "${!options[@]}"; do
+            tput el
+            if [[ $i == $current ]]; then
+                echo -e "➤ ${selected_theme}${options[$i]}${unselected_theme}"
+            else
+                echo "  ${options[$i]}"
+            fi
+            ((line_count++))
+        done
+        # erase leftover lines from previous draw
+        for ((i=line_count;i<last_lines;i++)); do
+            tput el
+            echo
+        done
+        last_lines=$line_count
+    }
+
+    while true; do
+        draw_menu
+        IFS= read -rsn1 key
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 -t 0.05 key || key=""
+            case "$key" in
+                "[A") ((current--));;
+                "[B") ((current++));;
+            esac
+        elif [[ $key == "" ]]; then
+            selected="${options[$current]}"
+            return 0
+        fi
+        (( current < 0 )) && current=$((${#options[@]} - 1))
+        (( current >= ${#options[@]} )) && current=0
+    done
+}
+
+main_menu() {
+    while true; do
+        menu "Login" "Manage Users" "Settings"
+        case "$selected" in
+            "Login") run_login  ;;
+            "Manage Users") manage_users ;;
+            "Settings") manage_settings ;;
+        esac
+    done
+}
+
+manage_users_pre() {
+    clear
+    menu $users "Back"
+    [ "$selected" = "Back" ] && main_menu
+    echo "$selected"
+}
+
+manage_users() {
+    clear
+    menu "Add user" "Delete user" "Back"
+    [ "$selected" = "Back" ] && main_menu
+    selected_user_op="$selected"
+    unset selected
+    clear
+    printf "$main_theme"
+    figlet $figlet_args $figlet_text
+    case "$selected_user_op" in
+	"Add user")
+	    read -p "Enter a ID: " new_id
+	    read -sp "Enter a password: " new_password
+	    echo
+	    read -p "Enter the new user's permission: " new_permission
+	    read -sp "Confirm the new password: " new_confirm_pass
+	    echo
+	    if [ "$new_password" = "$new_confirm_pass" ]; then
+		jq --arg id "$new_id" \
+   		--arg pass "$new_password" \
+	   	--arg perm "$new_permission" \
+   		'.users += [{"id": $id, "password": $pass, "permission": $perm}]' \
+   		"$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+	    else
+		echo "Passwords do not match."; manage_users
+	    fi
+	    ;;
+	"Delete user")
+	    clear
+	    manage_users_pre
+	    selected_user="$selected"
+	    perm=$(jq -r --arg id "$selected_user" '.users[] | select(.id == $id) | .permission' "$CONFIG_FILE")
+	    if [ "$perm" = "owner" ] && [ "$owner_count" > 1 ]; then
+		echo "Cannot delete all owners!"
+		manage_users
+	    else
+		echo -en "Enter password for\033[4m ${selected_user}\033[0m: "
+		read delete_inputpass
+	    fi
+	    delete_real_pass="$(get_user_password)"
+	    if [ "$delete_real_pass" = "$delete_inputpass" ]; then
+		randomconfirm="$(head /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)"
+		echo "$randomconfirm"
+		read -p "Enter the code above to remove this user: " randomconfirm_input
+		[ "$randomconfirm" = "$randomconfirm_input" ] && jq --arg id "$selected_user" 'del(.users[] | select(.id == $id))' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+		clear
+		users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+		main_menu
+	    else
+		echo "Password does not match."
+		sleep 4.5
+		manage_users
+	    fi
+	;;
+    esac
+}
+
+manage_settings() {
+    clear
+    while true; do
+	menu "Manually edit config.json" "User Permissions" "Back"
+	case "$selected" in
+	    "Manually edit config.json")
+		pkg install nano > /dev/null
+		nano "$CONFIG_FILE" || sudo nano "$CONFIG_FILE" ;;
+	    "User Permissions") clear; userp_menu ;;
+	    "Back") clear; main_menu ;;
+	esac
+    done
+}
+
+get_user_password() {
+    jq -r --arg user "$selected_user" '.users[] | select(.id == $user) | .password' "$CONFIG_FILE"
+}
+
+run_login() {
+    while true; do
+	clear
+	menu $users
+	selected_user="$selected"
+	CURRENT_PASS="$(get_user_password)"
+	read -sp "Enter password for ${selected_user}" inputpass
+	if [ ! "$inputpass" = "$CURRENT_PASS" ]; then
+	    echo -e "${main_theme}\nwrong passeord. retry\n\033[0m"
+	    sleep 3
+	    continue
+	else
+	    clear
+	    login
+	    exit 0
+	fi
+    done
+}
+main_menu
