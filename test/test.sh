@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
+echo "# If this script runs and tells you what you selected the main script will fully work too"
 
 options=("Login" "Manage Users" "Settings" "Exit")
 current=0

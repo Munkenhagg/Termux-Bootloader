@@ -162,7 +162,6 @@ manage_settings() {
 	menu "Manually edit config.json" "User Permissions" "Back"
 	case "$selected" in
 	    "Manually edit config.json")
-		pkg install nano > /dev/null
 		nano "$CONFIG_FILE" || sudo nano "$CONFIG_FILE" ;;
 	    "User Permissions") clear; userp_menu ;;
 	    "Back") clear; main_menu ;;
@@ -177,7 +176,10 @@ get_user_password() {
 run_login() {
     while true; do
 	clear
-	menu $users
+	menu $users "Back"
+	if [ "$selected" = "Back" ]; then
+	    main_menu
+	fi
 	selected_user="$selected"
 	CURRENT_PASS="$(get_user_password)"
 	read -sp "Enter password for ${selected_user}" inputpass
