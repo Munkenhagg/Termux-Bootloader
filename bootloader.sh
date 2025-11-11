@@ -7,6 +7,7 @@ selected_theme="$(jq -r '.selected_theme' "$CONFIG_FILE")"
 unselected_theme="$(jq -r '.unselected_theme' "$CONFIG_FILE")"
 main_theme="$(jq -r '.main_theme' "$CONFIG_FILE")"
 users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+owner_count="$(jq '[.users[] | select(.permission=="owner")] | length' "$CONFIG_FILE")"
 themefind() {
     local color="$1"
     color="$(echo "$color" | tr '[:upper:]' '[:lower:]')"
@@ -122,6 +123,9 @@ manage_users() {
 	   	--arg perm "$new_permission" \
    		'.users += [{"id": $id, "password": $pass, "permission": $perm}]' \
    		"$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+		users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+		clear
+		main_menu
 	    else
 		echo "Passwords do not match."; manage_users
 	    fi
@@ -133,6 +137,7 @@ manage_users() {
 	    perm=$(jq -r --arg id "$selected_user" '.users[] | select(.id == $id) | .permission' "$CONFIG_FILE")
 	    if [ "$perm" = "owner" ] && [ "$owner_count" > 1 ]; then
 		echo "Cannot delete all owners!"
+		sleep 3.5
 		manage_users
 	    else
 		echo -en "Enter password for\033[4m ${selected_user}\033[0m: "
@@ -161,7 +166,7 @@ manage_settings() {
     while true; do
 	menu "Manually edit config.json" "User Permissions" "Back"
 	case "$selected" in
-	    "Manually edit config.json")
+	    "Manually edit config.json(unsafe)")
 		nano "$CONFIG_FILE" || sudo nano "$CONFIG_FILE" ;;
 	    "User Permissions") clear; userp_menu ;;
 	    "Back") clear; main_menu ;;
