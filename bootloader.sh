@@ -187,14 +187,18 @@ run_login() {
 	fi
 	selected_user="$selected"
 	CURRENT_PASS="$(get_user_password)"
-	read -sp "Enter password for ${selected_user}" inputpass
+	read -sp "${main_theme}  Enter password for ${selected_user}" inputpass
 	if [ ! "$inputpass" = "$CURRENT_PASS" ]; then
-	    echo -e "${main_theme}\nwrong passeord. retry\n\033[0m"
+	    echo -e "${main_theme}\nwrong password. retry\n\033[0m"
 	    sleep 3
 	    continue
 	else
 	    clear
-	    login
+	    echo -en "\n${main_theme}"
+	    figlet -f big "Welcome"
+	    echo -e "${main_theme}"
+	    figlet -f mini "${selected_user}"
+	    tput cnorm
 	    exit 0
 	fi
     done
