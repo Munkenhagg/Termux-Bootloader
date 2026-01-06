@@ -7,7 +7,9 @@ selected_theme="$(jq -r '.selected_theme' "$CONFIG_FILE")"
 unselected_theme="$(jq -r '.unselected_theme' "$CONFIG_FILE")"
 main_theme="$(jq -r '.main_theme' "$CONFIG_FILE")"
 users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+salt="qSvZ6su1dOeOEeOExVXBxVIYGIQOWX92SpGPL2WeMWXJ59nQRSqbf7WPM"
 owner_count="$(jq '[.users[] | select(.permission=="owner")] | length' "$CONFIG_FILE")"
+SHELL="$(jq -r '.shell' "$CONFIG_FILE")"
 themefind() {
     local color="$1"
     color="$(echo "$color" | tr '[:upper:]' '[:lower:]')"
@@ -45,7 +47,7 @@ menu() {
 	tput civis
         tput cup 0 0
         printf "${main_theme}"
-        figlet $figlet_args $figlet_text
+        figlet $figlet_args "$figlet_text"
         local line_count=0
         for i in "${!options[@]}"; do
             tput el
@@ -56,7 +58,6 @@ menu() {
             fi
             ((line_count++))
         done
-        # erase leftover lines from previous draw
         for ((i=line_count;i<last_lines;i++)); do
             tput el
             echo
@@ -118,16 +119,17 @@ manage_users() {
 	    read -sp "Confirm the new password: " new_confirm_pass
 	    echo
 	    if [ "$new_password" = "$new_confirm_pass" ]; then
-		jq --arg id "$new_id" \
-   		--arg pass "$new_password" \
-	   	--arg perm "$new_permission" \
-   		'.users += [{"id": $id, "password": $pass, "permission": $perm}]' \
-   		"$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
-		users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
-		clear
-		main_menu
+	    	hash="$(printf "%s%s" "$salt" "$new_confirm_pass" | sha256sum | awk '{print $1}')"
+			jq --arg id "$new_id" \
+   			--arg pass "$hash" \
+	   		--arg perm "$new_permission" \
+   			'.users += [{"id": $id, "password": $pass, "permission": $perm}]' \
+   			"$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+			users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+			clear
+			return
 	    else
-		echo "Passwords do not match."; manage_users
+			echo "Passwords do not match."; manage_users
 	    fi
 	    ;;
 	"Delete user")
@@ -135,27 +137,28 @@ manage_users() {
 	    manage_users_pre
 	    selected_user="$selected"
 	    perm=$(jq -r --arg id "$selected_user" '.users[] | select(.id == $id) | .permission' "$CONFIG_FILE")
-	    if [ "$perm" = "owner" ] && [ "$owner_count" > 1 ]; then
-		echo "Cannot delete all owners!"
-		sleep 3.5
-		manage_users
+	    if [ "$perm" = "owner" ] && [ "$owner_count" -le 1 ]; then
+			echo "Cannot delete all owners!"
+			sleep 3.5
+			manage_users
 	    else
-		echo -en "Enter password for\033[4m ${selected_user}\033[0m: "
-		read delete_inputpass
+			echo -en "Enter password for \033[4m${selected_user}\033[0m: "
+			read delete_inputpass
 	    fi
 	    delete_real_pass="$(get_user_password)"
+	    delete_inputpass="$(printf "%s%s" "$salt" "$delete_inputpass" | sha256sum | awk '{print $1}')"
 	    if [ "$delete_real_pass" = "$delete_inputpass" ]; then
-		randomconfirm="$(head /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)"
-		echo "$randomconfirm"
-		read -p "Enter the code above to remove this user: " randomconfirm_input
-		[ "$randomconfirm" = "$randomconfirm_input" ] && jq --arg id "$selected_user" 'del(.users[] | select(.id == $id))' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
-		clear
-		users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
-		main_menu
+			randomconfirm="$(head /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 12)"
+			echo "$randomconfirm"
+			read -p "Enter the code above to remove this user: " randomconfirm_input
+			[ "$randomconfirm" = "$randomconfirm_input" ] && jq --arg id "$selected_user" 'del(.users[] | select(.id == $id))' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+			clear
+			users="$(jq -r '.users[] | .id' "$CONFIG_FILE")"
+			return
 	    else
-		echo "Password does not match."
-		sleep 4.5
-		manage_users
+			echo "Password does not match."
+			sleep 4.5
+			manage_users
 	    fi
 	;;
     esac
@@ -164,13 +167,12 @@ manage_users() {
 manage_settings() {
     clear
     while true; do
-	menu "Manually edit config.json" "User Permissions" "Back"
-	case "$selected" in
-	    "Manually edit config.json(unsafe)")
-		nano "$CONFIG_FILE" || sudo nano "$CONFIG_FILE" ;;
-	    "User Permissions") clear; userp_menu ;;
-	    "Back") clear; main_menu ;;
-	esac
+		menu "Manually edit config.json(unsafe)" "User Permissions" "Back"
+		case "$selected" in
+		    "Manually edit config.json(unsafe)") nano "$CONFIG_FILE" || sudo nano "$CONFIG_FILE" ;;
+	    	"User Permissions") clear; userp_menu ;;
+	    	"Back") clear; return ;;
+		esac
     done
 }
 
@@ -183,11 +185,12 @@ run_login() {
 	clear
 	menu $users "Back"
 	if [ "$selected" = "Back" ]; then
-	    main_menu
+	    return
 	fi
 	selected_user="$selected"
 	CURRENT_PASS="$(get_user_password)"
 	read -sp "${main_theme}  Enter password for ${selected_user}" inputpass
+	inputpass="$(printf "%s%s" "$salt" "$inputpass" | sha256sum | awk '{print $1}')"
 	if [ ! "$inputpass" = "$CURRENT_PASS" ]; then
 	    echo -e "${main_theme}\nwrong password. retry\n\033[0m"
 	    sleep 3
@@ -199,7 +202,7 @@ run_login() {
 	    echo -e "${main_theme}"
 	    figlet -f mini "${selected_user}"
 	    tput cnorm
-	    exit 0
+	    exec "$SHELL"
 	fi
     done
 }
