@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "id": "User",
+      "password": "YourSuperSecretSaltedSha256Password",
+      "permission": "owner"
+    }
+  ],
+  "figlet_text": "Termux Bootloader",
+  "figlet_args": "-f big",
+  "selected_theme": "white",
+  "unselected_theme": "white",
+  "main_theme": "green",
+  "shell": "sh"
+}
