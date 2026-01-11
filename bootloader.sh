@@ -85,11 +85,12 @@ menu() {
 
 main_menu() {
     while true; do
-        menu "Login" "Manage Users" "Settings"
+        menu "Login" "Manage Users" "Settings" "Advanced Options"
         case "$selected" in
             "Login") run_login  ;;
             "Manage Users") manage_users ;;
             "Settings") manage_settings ;;
+            "Advanced Options") advanced_options ;;
         esac
     done
 }
@@ -97,14 +98,14 @@ main_menu() {
 manage_users_pre() {
     clear
     menu $users "Back"
-    [ "$selected" = "Back" ] && main_menu
+    [ "$selected" = "Back" ] && return
     echo "$selected"
 }
 
 manage_users() {
     clear
     menu "Add user" "Delete user" "Back"
-    [ "$selected" = "Back" ] && main_menu
+    [ "$selected" = "Back" ] && return
     selected_user_op="$selected"
     unset selected
     clear
@@ -129,18 +130,20 @@ manage_users() {
 			clear
 			return
 	    else
-			echo "Passwords do not match."; manage_users
+			echo "Passwords do not match."; unset selected_user_op; return
 	    fi
 	    ;;
 	"Delete user")
 	    clear
 	    manage_users_pre
+        [ "$selected" = "Back" ] && return
 	    selected_user="$selected"
+        unset selected
 	    perm=$(jq -r --arg id "$selected_user" '.users[] | select(.id == $id) | .permission' "$CONFIG_FILE")
 	    if [ "$perm" = "owner" ] && [ "$owner_count" -le 1 ]; then
 			echo "Cannot delete all owners!"
 			sleep 3.5
-			manage_users
+			return
 	    else
 			echo -en "Enter password for \033[4m${selected_user}\033[0m: "
 			read delete_inputpass
@@ -158,7 +161,8 @@ manage_users() {
 	    else
 			echo "Password does not match."
 			sleep 4.5
-			manage_users
+            unset selected_user
+			return
 	    fi
 	;;
     esac
@@ -206,4 +210,29 @@ run_login() {
 	fi
     done
 }
+
+advanced_options() {
+    while true; do 
+        clear
+        menu "Temporary Shell" "Back"
+        case "$selected" in
+            "Temporary Shell")
+                while true; do
+                    echo -en "\n${main_theme}Please enter a shell to use: "
+                    read SHELL
+                    if [ -n "$SHELL" ] && command -v "$SHELL" >/dev/null 2>&1; then
+                         echo -en "\033[1A\033[2K"
+                        return
+                    else
+                        echo "Invalid shell!"
+                        sleep 3.5
+                        echo -en "\033[1A\033[2K\033[1A\033[2K"
+                        continue
+                    fi
+                done
+            ;;
+            "Back") clear; return ;;
+        esac
+    done
+}         
 main_menu
