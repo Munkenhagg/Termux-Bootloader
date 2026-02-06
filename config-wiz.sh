@@ -5,8 +5,8 @@ mkdir -p "$CONFIG_DIR"
 if [ ! -s "$CONFIG_FILE" ]; then
   echo '{}' > "$CONFIG_FILE"
 fi
-if [ -z "$(cat $CONFIG_FILE | grep 'users')" ]; then
-	jq '.users = []' "$CONFIG_DIR/config.json" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_DIR/config.json"
+if ! jq -e '.users' "$CONFIG_FILE" >/dev/null 2>&1; then
+	jq '.users = []' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"
 fi
 prompt() {
     local var="$1" message="$2" default="$3"
@@ -27,6 +27,7 @@ prompt figlet_text "What do you wish to set as the banner text" "Termux Bootload
 prompt figlet_args "Please enter what arguments you wish to feed to the figlet banner" "-f big"
 prompt selected_theme "Please enter a color for the selected column(All ANSI colors)" green
 prompt unselected_theme "Please enter a color for the unselected columns(All ANSI colors)" white
+prompt logfile "Please enter a directory/name for the logfile" "$HOME/.config/termux-bootloader/.log"
 prompt main_theme "Please enter a color for the banner(all ANSI colors)" green
 while true; do
 	prompt shell "Please enter the default shell after login" bash

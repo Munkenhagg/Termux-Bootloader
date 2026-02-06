@@ -3,13 +3,16 @@
     {
       "id": "User",
       "password": "YourSuperSecretSaltedSha256Password",
-      "permission": "owner"
+      "permission": "owner",
+      "salt": "",
+      "regdate": "Register date"
     }
   ],
   "figlet_text": "Termux Bootloader",
   "figlet_args": "-f big",
   "selected_theme": "white",
   "unselected_theme": "white",
+  "logfile": "$HOME/.config/termux-bootloader/.log",
   "main_theme": "green",
   "shell": "sh"
 }
