@@ -323,17 +323,18 @@ run_login() {
 
 failcountd() {
     while [ "$AccountLockEnabled" = true ]; do
-    local locked_users="$(jq -r '.users[] | select(.failcount|tonumber >= 5) | .id' "$CONFIG_FILE")"
-    sleep 5
-    for lockeduser in ${locked_users[@]}; do
-        local timeleft="$(jq -r --arg id "$lockeduser" '.users[] | select(.id==$id) | .timeleft' "$CONFIG_FILE")"
-        local newtimeleft=$(($timeleft - 5))
-        local failcount="$(jq -r --arg user "$lockeduser" '.users[] | select(.id == $user) | .failcount' "$CONFIG_FILE")"
-        if [ "$timeleft" -le 0 ]; then
-            jq --arg id "$lockeduser" --arg failcount "0" '.users |= map(if .id==$id then .failcount=$failcount else . end)' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
-            continue
-        fi
-        jq --arg id "$lockeduser" --arg timeleft "$newtimeleft" '.users |= map(if .id==$id then .failcount=$failcount else . end)' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+        local locked_users="$(jq -r '.users[] | select(.failcount|tonumber >= 5) | .id' "$CONFIG_FILE")"
+        sleep 5
+        for lockeduser in ${locked_users[@]}; do
+            local timeleft="$(jq -r --arg id "$lockeduser" '.users[] | select(.id==$id) | .timeleft' "$CONFIG_FILE")"
+            local newtimeleft=$(($timeleft - 5))
+            local failcount="$(jq -r --arg user "$lockeduser" '.users[] | select(.id == $user) | .failcount' "$CONFIG_FILE")"
+            if [ "$timeleft" -le 0 ]; then
+                jq --arg id "$lockeduser" --arg failcount "0" '.users |= map(if .id==$id then .failcount=$failcount else . end)' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+                continue
+            fi
+            jq --arg id "$lockeduser" --arg timeleft "$newtimeleft" '.users |= map(if .id==$id then .failcount=$failcount else . end)' "$CONFIG_FILE" > tmp.json && mv tmp.json "$CONFIG_FILE"
+        done
     done
 }
 welcmesg() {
