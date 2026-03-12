@@ -5,7 +5,9 @@
       "password": "YourSuperSecretSaltedSha256Password",
       "permission": "owner",
       "salt": "",
-      "regdate": "Register date"
+      "regdate": "Register date",
+      "failcount": "5",
+      "timeleft": "180"
     }
   ],
   "figlet_text": "Termux Bootloader",
@@ -14,5 +16,6 @@
   "unselected_theme": "white",
   "logfile": "$HOME/.config/termux-bootloader/.log",
   "main_theme": "green",
-  "shell": "sh"
+  "shell": "sh",
+  "AccountLockEnabled": "true"
 }

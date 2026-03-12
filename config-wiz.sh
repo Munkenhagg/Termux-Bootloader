@@ -30,6 +30,15 @@ prompt unselected_theme "Please enter a color for the unselected columns(All ANS
 prompt logfile "Please enter a directory/name for the logfile" "$HOME/.config/termux-bootloader/.log"
 prompt main_theme "Please enter a color for the banner(all ANSI colors)" green
 while true; do
+	prompt AccountLockEnabled "Do you wish to enable account locking(true/false)" true
+	ALE=$(jq -r '.AccountLockEnabled' "$CONFIG_FILE")
+	if [ "$ALE" = "true" ] || [ "$ALE" = "false" ]; then
+		break
+	else
+		continue
+	fi
+done
+while true; do
 	prompt shell "Please enter the default shell after login" bash
 	shell="$(jq -r '.shell' "$CONFIG_FILE")"
 	if command -v "$shell"; then
