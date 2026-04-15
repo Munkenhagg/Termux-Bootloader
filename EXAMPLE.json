@@ -4,18 +4,18 @@
       "id": "User",
       "password": "YourSuperSecretSaltedSha256Password",
       "permission": "owner",
-      "salt": "",
+      "salt": "SaltForYourSha256Password",
       "regdate": "Register date",
-      "failcount": "5",
-      "timeleft": "180"
+      "failcount": 5,
+      "timeleft": 180
     }
   ],
   "figlet_text": "Termux Bootloader",
   "figlet_args": "-f big",
-  "selected_theme": "white",
-  "unselected_theme": "white",
+  "selected_theme": "green",
+  "unselected_theme": "brightwhite",
   "logfile": "$HOME/.config/termux-bootloader/.log",
   "main_theme": "green",
   "shell": "sh",
-  "AccountLockEnabled": "true"
+  "AccountLockEnabled": true
 }

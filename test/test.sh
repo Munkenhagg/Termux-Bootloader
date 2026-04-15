@@ -3,13 +3,12 @@ echo "# If this script runs and tells you what you selected the main script will
 
 options=("Login" "Manage Users" "Settings" "Exit")
 current=0
-last_drawn=-1  # no lines drawn yet
+last_drawn=-1 
 
 draw_menu() {
-    # If we already drew the menu, erase previous lines
     if [ $last_drawn -ge 0 ]; then
         for ((i=0; i<${#options[@]}; i++)); do
-            echo -ne "\033[A\033[2K"  # move up & clear line
+            echo -ne "\033[A\033[2K"
         done
     fi
 
@@ -21,10 +20,9 @@ draw_menu() {
         fi
     done
 
-    last_drawn=${#options[@]}  # remember how many lines we drew
+    last_drawn=${#options[@]}
 }
 
-# Initial draw
 echo "Use ↑ ↓ to move, Enter to select:"
 draw_menu
 

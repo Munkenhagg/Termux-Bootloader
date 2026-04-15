@@ -1,50 +1,97 @@
 #!/data/data/com.termux/files/usr/bin/bash
-CONFIG_DIR="$HOME/.config/termux-bootloader"
-CONFIG_FILE="$CONFIG_DIR/config.json"
-mkdir -p "$CONFIG_DIR"
-if [ ! -s "$CONFIG_FILE" ]; then
-  echo '{}' > "$CONFIG_FILE"
-fi
-if ! jq -e '.users' "$CONFIG_FILE" >/dev/null 2>&1; then
-	jq '.users = []' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"
-fi
-prompt() {
-    local var="$1" message="$2" default="$3"
-    local current="${!var:-$default}"
-    read -rp "$message [$default]: " input
-    input="${input:-$current}"
-    jq --arg option "$var" --arg value "$input" '.[$option] = $value' "$CONFIG_DIR/config.json" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"
+
+printf "This script is not finished. running old-config-wiz.sh..."
+exec ./old-config.wiz.sh
+printf "%bWarning%b: if this script errors for no reason use my old config-wiz.sh" "\033[93m" "\033[0m"
+
+declare -A dep
+declare -A depreq
+declare -A depopt
+
+for c in jq figlet sha256sum awk; do
+    command -v $c >/dev/null 2>&1 && dep[$c]=y || dep[$c]=n
+done
+
+# *not recommended* optionally set a custom directory for the tmp json with 'TMPDIR=/path/to/tmpdir ./config-wiz.sh'
+TMPJSON="$(mktemp)"
+
+depreq[sha256sum]=coreutils
+depreq[awk]=gawk
+
+depopt[sudo]=sudo
+depopt[su]=util-linux
+depopt[tput]=ncurses-utils
+depopt[nano]=nano
+
+alias depinst='pkg install'
+
+menu() {
+    local options=("$@")
+    local current=0 key
+    local last_lines=0
+    draw_menu() {
+	    tput civis
+        tput cup 0 0
+        printf "%b" "\033[32m"
+        figlet $figlet_args "$figlet_text"
+        local line_count=0
+        for i in "${!options[@]}"; do
+            tput el
+            if [[ $i == $current ]]; then
+                printf "%b➤ %s%b\n" "\033[32m" "${options[$i]}" "\033[97m"
+            else
+                printf "  %b%s\n" "\033[97m" "${options[$i]}"
+            fi
+            ((line_count++))
+        done
+        for ((i=line_count;i<last_lines;i++)); do
+            tput el
+            echo
+        done
+        last_lines=$line_count
+    }
+
+    while true; do
+        draw_menu
+        IFS= read -rsn1 key
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 -t 0.05 key || key=""
+            case "$key" in
+                "[A") ((current--));;
+                "[B") ((current++));;
+            esac
+        elif [[ $key == "" ]]; then
+            selected="${options[$current]}"
+            return 0
+        fi
+        (( current < 0 )) && current=$((${#options[@]} - 1))
+        (( current >= ${#options[@]} )) && current=0
+    done
 }
 
-clear
-printf "\033[92m"
-figlet -f big "Termux Bootloader"
-printf "\n"
-printf "\033[32m"
-figlet -f mini "S e t u p   W i z a r d"
-echo -e "\033[0m\n\n"
-prompt figlet_text "What do you wish to set as the banner text" "Termux Bootloader"
-prompt figlet_args "Please enter what arguments you wish to feed to the figlet banner" "-f big"
-prompt selected_theme "Please enter a color for the selected column(All ANSI colors)" green
-prompt unselected_theme "Please enter a color for the unselected columns(All ANSI colors)" white
-prompt logfile "Please enter a directory/name for the logfile" "$HOME/.config/termux-bootloader/.log"
-prompt main_theme "Please enter a color for the banner(all ANSI colors)" green
-while true; do
-	prompt AccountLockEnabled "Do you wish to enable account locking(true/false)" true
-	ALE=$(jq -r '.AccountLockEnabled' "$CONFIG_FILE")
-	if [ "$ALE" = "true" ] || [ "$ALE" = "false" ]; then
-		break
-	else
-		continue
-	fi
-done
-while true; do
-	prompt shell "Please enter the default shell after login" bash
-	shell="$(jq -r '.shell' "$CONFIG_FILE")"
-	if command -v "$shell"; then
-		break
-	else
-		echo "Shell not found!"
-		sleep 1.8
-	fi
-done
+writejsonconf() {
+    [ -z "$(cat $CONFIG_FILE)" ] && printf "{}" > "$CONFIG_FILE"
+    jq -e '.users' "$CONFIG_FILE" >/dev/null 2>&1 || jq '.users = []' "$CONFIG_FILE" > "$TMPJSON"
+}
+
+finish() {
+    mv "$TMPJSON" "$CONFIG_FILE"
+}
+
+depmenu() {
+    
+}
+configmenu() {
+
+}
+
+main_menu() {
+    while true; do
+        menu "Configuration" "Dependencies" "Finish"
+        case "$selected" in
+            "Configuration") configmenu ;;
+            "Dependencies") depmenu ;;
+            "Finish") finish ;;
+        esac
+    done
+}

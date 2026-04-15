@@ -1,0 +1,62 @@
+#!/data/data/com.termux/files/usr/bin/bash
+CONFIG_DIR="$HOME/.config/termux-bootloader"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+mkdir -p "$CONFIG_DIR"
+if [ ! -s "$CONFIG_FILE" ]; then
+  echo '{}' > "$CONFIG_FILE"
+fi
+if ! jq -e '.users' "$CONFIG_FILE" >/dev/null 2>&1; then
+	jq '.users = []' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"
+fi
+prompt() {
+    local var="$1" message="$2" default="$3"
+    local current="${!var:-$default}"
+
+    read -rp "$message [$default]: " input
+    input="${input:-$current}"
+    if [[ "$input" =~ ^[0-9]+$ ]]; then
+        jq --arg option "$var" --argjson value "$input" \
+           '.[$option] = $value' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json"
+    elif [[ "$input" == "true" || "$input" == "false" ]]; then
+        jq --arg option "$var" --argjson value "$input" \
+           '.[$option] = $value' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json"
+    else
+        jq --arg option "$var" --arg value "$input" \
+           '.[$option] = $value' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json"
+    fi
+    mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"
+}
+
+clear
+printf "\033[92m"
+figlet -f big "Termux Bootloader"
+printf "\n"
+printf "\033[32m"
+figlet -f mini "S e t u p   W i z a r d"
+echo -e "\033[0m\n\n"
+prompt figlet_text "What do you wish to set as the banner text" "Termux Bootloader"
+prompt figlet_args "Please enter what arguments you wish to feed to the figlet banner" "-f big"
+prompt selected_theme "Please enter a color for the selected column(All ANSI colors)" green
+prompt unselected_theme "Please enter a color for the unselected columns(All ANSI colors)" white
+prompt logfile "Please enter a directory/name for the logfile" "$HOME/.config/termux-bootloader/.log"
+prompt main_theme "Please enter a color for the banner(all ANSI colors)" green
+while true; do
+	prompt AccountLockEnabled "Do you wish to enable account locking(true/false)" true
+	ALE=$(jq -r '.AccountLockEnabled' "$CONFIG_FILE")
+	if [ "$ALE" = "true" ] || [ "$ALE" = "false" ]; then
+		break
+	else
+		continue
+	fi
+done
+while true; do
+	prompt shell "Please enter the default shell after login" bash
+	shell="$(jq -r '.shell' "$CONFIG_FILE")"
+	if command -v "$shell"; then
+		break
+	else
+		echo "Shell not found!"
+		sleep 1.8
+	fi
+done
+jq --argjson false '.plugins = $false' "$CONFIG_FILE" > "$CONFIG_DIR/tmp.json" && mv "$CONFIG_DIR/tmp.json" "$CONFIG_FILE"

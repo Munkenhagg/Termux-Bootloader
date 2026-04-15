@@ -5,10 +5,9 @@ current=0
 last_drawn=-1  # no lines drawn yet
 
 draw_menu() {
-    # If we already drew the menu, erase previous lines
     if [ $last_drawn -ge 0 ]; then
         for ((i=0; i<${#options[@]}; i++)); do
-            echo -ne "\033[A\033[2K"  # move up & clear line
+            echo -ne "\033[A\033[2K"
         done
     fi
 
@@ -20,7 +19,7 @@ draw_menu() {
         fi
     done
 
-    last_drawn=${#options[@]}  # remember how many lines we drew
+    last_drawn=${#options[@]}
 }
 
 echo "Use w/s to move, Enter to select:"

@@ -23,3 +23,25 @@
 [![Static Badge](https://img.shields.io/badge/Download-Zip-brightgreen)](https://github.com/Munkenhagg/Termux-Bootloader/archive/refs/heads/main.zip)
 
 After downloading the zip, if you want the script to always run when starting termux, run `echo "bash $HOME/Termux-Bootloader-main/bootloader.sh" >> /data/data/com.termux/files/usr/etc/termux-login.sh`
+
+## System requirements
+
+- **RAM:** RAM needed for the whole environment the script requires(bash, jq, etc)
+
+##### Minimum: 15MB
+
+##### Recommended: 60MB
+
+- **CPU Minimum:** the recommended minimum cpu needed for the script
+
+##### ARMv7: Cortex-A8
+
+##### ARMv8: Cortex-A55
+
+##### X86: Pentium III
+
+- **Storage:** the storage needed for this script(excluding termux and tools)
+
+##### Minimum: MicroSD, 30kb free
+
+##### Recommended: eMMC, 4MB free
